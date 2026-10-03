@@ -1,210 +1,176 @@
 package ui;
 
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicSliderUI;
+import model.SequencerModel;
 
 public class GridPanel extends JPanel {
+    private final SequencerModel model;
+    private int playheadStep = -1;
 
+    // Theme & Visual Colors
     private static final Color BG_DARK = new Color(20, 20, 24);
-    private static final Color TEXT_LIGHT = new Color(220, 220, 230);
-    private static final Color TEXT_MUTED = new Color(140, 140, 160);
+    private static final Color CELL_INACTIVE = new Color(40, 40, 48);
     private static final Color PURPLE_GLOW = new Color(160, 80, 255);
     private static final Color PURPLE_ACTIVE = new Color(200, 140, 255);
-    private static final Color CELL_INACTIVE = new Color(40, 40, 48);
-    private static final Color PLAYHEAD_COLOR = new Color(255, 255, 255, 20);
+    private static final Color PLAYHEAD_COLOR = new Color(255, 255, 255, 25);
+    private static final Color TEXT_LIGHT = new Color(220, 220, 230);
+    private static final Color TEXT_MUTED = new Color(140, 140, 160);
+    private static final Color GRID_CONTAINER_BG = new Color(30, 30, 36);
+    private static final Color GRID_CONTAINER_BORDER = new Color(60, 60, 70);
 
-    public GridPanel() {
-        setLayout(new BorderLayout());
+    private static final String[] ROW_LABELS = {"C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"};
+    private static final int START_X = 50;
+    private static final int START_Y = 40;
+
+    public GridPanel(SequencerModel model) {
+        this.model = model;
+        
+        int preferredWidth = START_X + UITheme.STEPS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + 30;
+        int preferredHeight = START_Y + UITheme.ROWS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + 30;
+        setPreferredSize(new Dimension(Math.max(800, preferredWidth), Math.max(400, preferredHeight)));
         setBackground(BG_DARK);
-        setBorder(new EmptyBorder(20, 30, 20, 30));
 
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(BG_DARK);
-        headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
-
-        JLabel titleLabel = new JLabel("MUSIC SEQUENCER");
-        titleLabel.setFont(UITheme.TITLE_FONT);
-        titleLabel.setForeground(TEXT_LIGHT);
-
-        JLabel subtitleLabel = new JLabel("16-Step Pattern");
-        subtitleLabel.setFont(UITheme.SMALL_FONT);
-        subtitleLabel.setForeground(TEXT_MUTED);
-
-        JPanel titles = new JPanel(new GridLayout(2, 1));
-        titles.setBackground(BG_DARK);
-        titles.add(titleLabel);
-        titles.add(subtitleLabel);
-
-        headerPanel.add(titles, BorderLayout.WEST);
-        add(headerPanel, BorderLayout.NORTH);
-
-        // Center Grid Canvas
-        add(new SequencerCanvas(), BorderLayout.CENTER);
-
-        // Bottom Controls
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBackground(BG_DARK);
-        bottomPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        buttonPanel.setBackground(BG_DARK);
-
-        buttonPanel.add(createStyledButton("PLAY"));
-        buttonPanel.add(createStyledButton("STOP"));
-        buttonPanel.add(createStyledButton("CLEAR"));
-
-        JPanel bpmPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        bpmPanel.setBackground(BG_DARK);
-        
-        JLabel bpmLabel = new JLabel("BPM: 120");
-        bpmLabel.setFont(UITheme.NORMAL_FONT);
-        bpmLabel.setForeground(TEXT_LIGHT);
-        
-        JSlider bpmSlider = new JSlider(60, 200, 120);
-        bpmSlider.setBackground(BG_DARK);
-        bpmSlider.setUI(new CustomSliderUI(bpmSlider));
-        bpmSlider.setPreferredSize(new Dimension(150, 30));
-        
-        bpmPanel.add(bpmLabel);
-        bpmPanel.add(bpmSlider);
-
-        bottomPanel.add(buttonPanel, BorderLayout.WEST);
-        bottomPanel.add(bpmPanel, BorderLayout.EAST);
-        
-        add(bottomPanel, BorderLayout.SOUTH);
-    }
-
-    private JButton createStyledButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(UITheme.NORMAL_FONT);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(PURPLE_GLOW.darker());
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(PURPLE_GLOW, 1, true),
-            BorderFactory.createEmptyBorder(8, 20, 8, 20)
-        ));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private static class SequencerCanvas extends JPanel {
-        private final String[] ROW_LABELS = {"C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"};
-        // A dummy pattern to look nice visually
-        private final int[][] pattern = {
-            {0,0,1,0, 0,0,0,0, 1,0,0,0, 0,0,1,0},
-            {0,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0},
-            {1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0},
-            {0,1,0,1, 0,0,0,0, 0,1,0,1, 0,0,0,0},
-            {0,0,0,0, 0,1,0,0, 0,0,0,0, 0,1,0,0},
-            {1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0},
-            {0,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,1},
-            {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0}
-        };
-
-        public SequencerCanvas() {
-            setBackground(BG_DARK);
-            int width = 50 + UITheme.STEPS * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
-            int height = 30 + UITheme.ROWS * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
-            setPreferredSize(new Dimension(width, height));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int startX = 40;
-            int startY = 30;
-
-            // Draw grid border & background
-            int gridW = UITheme.STEPS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP + 20;
-            int gridH = UITheme.ROWS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP + 20;
-            
-            g2d.setColor(new Color(30, 30, 36));
-            g2d.fillRoundRect(startX - 10, startY - 10, gridW, gridH, 15, 15);
-            g2d.setColor(new Color(60, 60, 70));
-            g2d.setStroke(new BasicStroke(1f));
-            g2d.drawRoundRect(startX - 10, startY - 10, gridW, gridH, 15, 15);
-
-            // Playhead column index
-            int currentStep = 4; // visual playhead position
-
-            // Draw Playhead highlight
-            g2d.setColor(PLAYHEAD_COLOR);
-            int pX = startX + currentStep * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP/2;
-            g2d.fillRoundRect(pX, startY - 5, UITheme.CELL_SIZE + UITheme.GRID_GAP, gridH - 10, 10, 10);
-
-            // Draw Column numbers
-            g2d.setFont(UITheme.SMALL_FONT);
-            g2d.setColor(TEXT_MUTED);
-            for (int col = 0; col < UITheme.STEPS; col++) {
-                String num = String.valueOf(col + 1);
-                int cx = startX + col * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + UITheme.CELL_SIZE / 2;
-                FontMetrics fm = g2d.getFontMetrics();
-                int nx = cx - fm.stringWidth(num) / 2;
-                g2d.drawString(num, nx, startY - 20);
+        // Mouse click listener for matrix cell interaction
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                handleGridClick(e.getX(), e.getY());
             }
+        });
+    }
 
-            // Draw Grid
-            for (int row = 0; row < UITheme.ROWS; row++) {
-                // Row labels
-                g2d.setColor(TEXT_LIGHT);
-                g2d.setFont(UITheme.NORMAL_FONT);
-                FontMetrics fm = g2d.getFontMetrics();
-                int lx = startX - 25 - fm.stringWidth(ROW_LABELS[row]) / 2;
-                int ly = startY + row * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + UITheme.CELL_SIZE / 2 + fm.getAscent() / 2 - 2;
-                g2d.drawString(ROW_LABELS[row], lx, ly);
+    public void setPlayheadStep(int step) {
+        this.playheadStep = step;
+        repaint();
+    }
 
-                for (int col = 0; col < UITheme.STEPS; col++) {
-                    int x = startX + col * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
-                    int y = startY + row * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
+    public int getPlayheadStep() {
+        return playheadStep;
+    }
 
-                    boolean isActive = pattern[row][col] == 1;
+    private void handleGridClick(int mouseX, int mouseY) {
+        for (int row = 0; row < UITheme.ROWS; row++) {
+            for (int col = 0; col < UITheme.STEPS; col++) {
+                int cellX = START_X + col * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
+                int cellY = START_Y + row * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
 
-                    if (isActive) {
-                        // Outer glow
-                        g2d.setColor(PURPLE_GLOW);
-                        g2d.fillRoundRect(x - 2, y - 2, UITheme.CELL_SIZE + 4, UITheme.CELL_SIZE + 4, 12, 12);
-                        // Inner active cell
-                        g2d.setColor(PURPLE_ACTIVE);
-                    } else {
-                        g2d.setColor(CELL_INACTIVE);
+                if (mouseX >= cellX && mouseX <= cellX + UITheme.CELL_SIZE &&
+                    mouseY >= cellY && mouseY <= cellY + UITheme.CELL_SIZE) {
+                    
+                    if (model != null) {
+                        try {
+                            // Try calling toggleCell or setCell on model if available
+                            java.lang.reflect.Method toggleMethod = model.getClass().getMethod("toggleCell", int.class, int.class);
+                            toggleMethod.invoke(model, row, col);
+                        } catch (Exception ignored) {
+                            try {
+                                java.lang.reflect.Method isSetMethod = model.getClass().getMethod("isCellActive", int.class, int.class);
+                                boolean current = (boolean) isSetMethod.invoke(model, row, col);
+                                java.lang.reflect.Method setMethod = model.getClass().getMethod("setCell", int.class, int.class, boolean.class);
+                                setMethod.invoke(model, row, col, !current);
+                            } catch (Exception ex) {
+                                // Fallback if methods have different signatures
+                            }
+                        }
                     }
-
-                    g2d.fillRoundRect(x, y, UITheme.CELL_SIZE, UITheme.CELL_SIZE, 8, 8);
+                    repaint();
+                    return;
                 }
             }
         }
     }
 
-    private static class CustomSliderUI extends BasicSliderUI {
-        public CustomSliderUI(JSlider b) {
-            super(b);
+    private boolean isCellActive(int row, int col) {
+        if (model == null) return false;
+        try {
+            java.lang.reflect.Method isSetMethod = model.getClass().getMethod("isCellActive", int.class, int.class);
+            return (boolean) isSetMethod.invoke(model, row, col);
+        } catch (Exception ignored) {
+            try {
+                java.lang.reflect.Method getMethod = model.getClass().getMethod("getCell", int.class, int.class);
+                Object res = getMethod.invoke(model, row, col);
+                if (res instanceof Boolean) return (Boolean) res;
+                if (res instanceof Number) return ((Number) res).intValue() != 0;
+            } catch (Exception ex) {
+                // Return false if unresolvable
+            }
         }
-        @Override
-        public void paintThumb(Graphics g) {
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setColor(PURPLE_ACTIVE);
-            g2d.fillOval(thumbRect.x, thumbRect.y + 5, 12, 12);
+        return false;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        int gridW = UITheme.STEPS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP + 24;
+        int gridH = UITheme.ROWS * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP + 24;
+
+        // Draw Matrix Container Panel
+        g2d.setColor(GRID_CONTAINER_BG);
+        g2d.fillRoundRect(START_X - 12, START_Y - 12, gridW, gridH, 15, 15);
+        g2d.setColor(GRID_CONTAINER_BORDER);
+        g2d.setStroke(new BasicStroke(1f));
+        g2d.drawRoundRect(START_X - 12, START_Y - 12, gridW, gridH, 15, 15);
+
+        // Draw Playhead Highlight if active
+        if (playheadStep >= 0 && playheadStep < UITheme.STEPS) {
+            g2d.setColor(PLAYHEAD_COLOR);
+            int pX = START_X + playheadStep * (UITheme.CELL_SIZE + UITheme.GRID_GAP) - UITheme.GRID_GAP / 2;
+            g2d.fillRoundRect(pX, START_Y - 6, UITheme.CELL_SIZE + UITheme.GRID_GAP, gridH - 12, 10, 10);
         }
-        @Override
-        public void paintTrack(Graphics g) {
-            Graphics2D g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2d.setColor(CELL_INACTIVE);
-            g2d.fillRoundRect(trackRect.x, trackRect.y + trackRect.height / 2 - 2, trackRect.width, 4, 4, 4);
+
+        // Draw Column Step Numbers (1 to 16)
+        g2d.setFont(UITheme.SMALL_FONT);
+        g2d.setColor(TEXT_MUTED);
+        FontMetrics fmCol = g2d.getFontMetrics();
+        for (int col = 0; col < UITheme.STEPS; col++) {
+            String stepStr = String.valueOf(col + 1);
+            int cx = START_X + col * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + UITheme.CELL_SIZE / 2;
+            int nx = cx - fmCol.stringWidth(stepStr) / 2;
             
-            int fillW = thumbRect.x - trackRect.x;
-            if (fillW > 0) {
-                g2d.setColor(PURPLE_GLOW);
-                g2d.fillRoundRect(trackRect.x, trackRect.y + trackRect.height / 2 - 2, fillW, 4, 4, 4);
+            if (col == playheadStep) {
+                g2d.setColor(TEXT_LIGHT);
+            } else {
+                g2d.setColor(TEXT_MUTED);
+            }
+            g2d.drawString(stepStr, nx, START_Y - 20);
+        }
+
+        // Draw Matrix Grid & Row Note Labels
+        for (int row = 0; row < UITheme.ROWS; row++) {
+            // Note Label (e.g. C5, B4, ...)
+            g2d.setColor(TEXT_LIGHT);
+            g2d.setFont(UITheme.NORMAL_FONT);
+            FontMetrics fmRow = g2d.getFontMetrics();
+            String label = row < ROW_LABELS.length ? ROW_LABELS[row] : "R" + (row + 1);
+            int lx = START_X - 25 - fmRow.stringWidth(label) / 2;
+            int ly = START_Y + row * (UITheme.CELL_SIZE + UITheme.GRID_GAP) + UITheme.CELL_SIZE / 2 + fmRow.getAscent() / 2 - 2;
+            g2d.drawString(label, lx, ly);
+
+            // Row Cells
+            for (int col = 0; col < UITheme.STEPS; col++) {
+                int x = START_X + col * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
+                int y = START_Y + row * (UITheme.CELL_SIZE + UITheme.GRID_GAP);
+
+                boolean active = isCellActive(row, col);
+
+                if (active) {
+                    // Outer glow
+                    g2d.setColor(PURPLE_GLOW);
+                    g2d.fillRoundRect(x - 2, y - 2, UITheme.CELL_SIZE + 4, UITheme.CELL_SIZE + 4, 12, 12);
+                    // Inner active fill
+                    g2d.setColor(PURPLE_ACTIVE);
+                } else {
+                    g2d.setColor(CELL_INACTIVE);
+                }
+
+                g2d.fillRoundRect(x, y, UITheme.CELL_SIZE, UITheme.CELL_SIZE, 8, 8);
             }
         }
     }
