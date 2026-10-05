@@ -61,20 +61,7 @@ public class GridPanel extends JPanel {
                     mouseY >= cellY && mouseY <= cellY + UITheme.CELL_SIZE) {
                     
                     if (model != null) {
-                        try {
-                            // Try calling toggleCell or setCell on model if available
-                            java.lang.reflect.Method toggleMethod = model.getClass().getMethod("toggleCell", int.class, int.class);
-                            toggleMethod.invoke(model, row, col);
-                        } catch (Exception ignored) {
-                            try {
-                                java.lang.reflect.Method isSetMethod = model.getClass().getMethod("isCellActive", int.class, int.class);
-                                boolean current = (boolean) isSetMethod.invoke(model, row, col);
-                                java.lang.reflect.Method setMethod = model.getClass().getMethod("setCell", int.class, int.class, boolean.class);
-                                setMethod.invoke(model, row, col, !current);
-                            } catch (Exception ex) {
-                                // Fallback if methods have different signatures
-                            }
-                        }
+                        model.toggleCell(row, col);
                     }
                     repaint();
                     return;
@@ -84,21 +71,7 @@ public class GridPanel extends JPanel {
     }
 
     private boolean isCellActive(int row, int col) {
-        if (model == null) return false;
-        try {
-            java.lang.reflect.Method isSetMethod = model.getClass().getMethod("isCellActive", int.class, int.class);
-            return (boolean) isSetMethod.invoke(model, row, col);
-        } catch (Exception ignored) {
-            try {
-                java.lang.reflect.Method getMethod = model.getClass().getMethod("getCell", int.class, int.class);
-                Object res = getMethod.invoke(model, row, col);
-                if (res instanceof Boolean) return (Boolean) res;
-                if (res instanceof Number) return ((Number) res).intValue() != 0;
-            } catch (Exception ex) {
-                // Return false if unresolvable
-            }
-        }
-        return false;
+        return model != null && model.isCellActive(row, col);
     }
 
     @Override
