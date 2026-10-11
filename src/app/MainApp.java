@@ -1,9 +1,12 @@
 package app;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.io.File;
 
 import audio.AudioEngine;
+import audio.BeatDetector;
 import model.PatternStorage;
 import model.SequencerModel;
 import ui.GridPanel;
@@ -78,9 +81,11 @@ public class MainApp extends JFrame {
         // Save & Load File Pattern Controls
         JButton saveBtn = new JButton("Save Pattern");
         JButton loadBtn = new JButton("Load Pattern");
+        JButton importWavBtn = new JButton("Import Beat from WAV");
 
         saveBtn.addActionListener(e -> handleSavePattern());
         loadBtn.addActionListener(e -> handleLoadPattern());
+        importWavBtn.addActionListener(e -> handleImportBeat());
 
         // Assemble Controls into Toolbar
         toolBar.add(playBtn);
@@ -99,6 +104,10 @@ public class MainApp extends JFrame {
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.add(saveBtn);
         toolBar.add(loadBtn);
+        toolBar.add(Box.createHorizontalStrut(10));
+        toolBar.addSeparator();
+        toolBar.add(Box.createHorizontalStrut(10));
+        toolBar.add(importWavBtn);
 
         return toolBar;
     }
@@ -165,6 +174,72 @@ public class MainApp extends JFrame {
             }
             updateTimerSpeed();
         });
+    }
+
+    private void handleImportBeat() {
+        try {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Import Beat from WAV");
+            FileNameExtensionFilter filter = new FileNameExtensionFilter("WAV Audio (*.wav)", "wav");
+            chooser.setFileFilter(filter);
+            chooser.setAcceptAllFileFilterUsed(false);
+
+            int result = chooser.showOpenDialog(this);
+            if (result != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            File selectedFile = chooser.getSelectedFile();
+            if (selectedFile == null) {
+                return;
+            }
+
+            boolean[] detectedBeats = BeatDetector.analyzeAudio(selectedFile);
+            if (detectedBeats == null || detectedBeats.length < SequencerModel.COLS) {
+                return;
+            }
+
+            String[] rowLabels = {"C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"};
+            JComboBox<String> rowDropdown = new JComboBox<>(rowLabels);
+            rowDropdown.setSelectedItem("G4");
+            if (rowDropdown.getSelectedIndex() == -1) {
+                rowDropdown.setSelectedIndex(SequencerModel.ROWS - 1);
+            }
+
+            Object[] message = {
+                "Select destination row for detected beats:",
+                rowDropdown
+            };
+
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                message,
+                "Import beats into which row?",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (confirm != JOptionPane.OK_OPTION) {
+                return;
+            }
+
+            int chosenRow = rowDropdown.getSelectedIndex();
+            if (chosenRow < 0 || chosenRow >= SequencerModel.ROWS) {
+                return;
+            }
+
+            for (int col = 0; col < SequencerModel.COLS; col++) {
+                model.setCell(chosenRow, col, detectedBeats[col]);
+            }
+            gridPanel.repaint();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Failed to import beat from audio file: " + e.getMessage(),
+                "Import Error",
+                JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     public static void main(String[] args) {
