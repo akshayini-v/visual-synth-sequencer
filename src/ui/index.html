@@ -2,223 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Music Sequencer</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Visual Synth Sequencer — Studio Control Panel Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", Roboto, sans-serif; user-select: none; }
+    body { background: #121216; color: #e6e6f0; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; }
+    
+    /* Top Studio Deck */
+    .top-container { background: #1c1c23; border-bottom: 1px solid #373744; }
+    .banner { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px 8px; }
+    .title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+    .subtitle { font-size: 12px; color: #8c8ca0; margin-top: 2px; }
+    .badges { display: flex; gap: 10px; }
+    .badge { background: #262630; border: 1px solid #373744; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge.purple { color: #c88cff; }
+    .badge.status { color: #8c8ca0; }
+    .badge.status.playing { color: #2ed573; }
+
+    .deck { padding: 4px 24px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .deck-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .btn { background: #2a2a34; color: #e6e6f0; border: 1px solid #373744; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+    .btn:hover { background: #3a3a48; border-color: #a050ff; }
+    .btn.primary { background: #7038b2; border-color: #a050ff; }
+    .btn.primary:hover { background: #8746d7; box-shadow: 0 0 10px rgba(160,80,255,0.4); }
+
+    .label { font-size: 13px; font-weight: 600; color: #8c8ca0; }
+    .bpm-text { font-size: 13px; font-weight: 700; color: #e6e6f0; width: 72px; }
+    input[type="range"] { -webkit-appearance: none; width: 150px; height: 5px; background: #26262e; border-radius: 5px; outline: none; cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #e6e6f0; border: 2px solid #a050ff; box-shadow: 0 0 6px #a050ff; }
+    select { background: #2a2a34; color: #e6e6f0; border: 1px solid #373744; border-radius: 6px; padding: 5px 10px; font-size: 13px; font-weight: 600; outline: none; cursor: pointer; }
+
+    /* Center Matrix */
+    .center-stage { flex: 1; display: flex; justify-content: center; align-items: center; padding: 24px; }
+    .matrix-box { background: #1c1c23; border: 1.2px solid #373744; border-radius: 18px; padding: 18px 22px 22px 18px; box-shadow: 3px 4px 12px rgba(0,0,0,0.45); position: relative; }
+    .steps-header { display: flex; margin-left: 68px; margin-bottom: 8px; gap: 6px; }
+    .step-num { width: 46px; text-align: center; font-size: 13px; font-weight: 700; color: #8c8ca0; }
+    .step-num.downbeat { color: #e6e6f0; }
+    .step-num.active-step { color: #c88cff; }
+
+    .grid-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .row-info { width: 62px; display: flex; flex-direction: column; padding-left: 4px; }
+    .note-name { font-size: 13px; font-weight: 700; color: #e6e6f0; }
+    .freq-name { font-size: 11px; color: #8c8ca0; }
+
+    .cell { width: 46px; height: 46px; border-radius: 9px; background: #26262e; cursor: pointer; position: relative; transition: background 0.1s; }
+    .cell.alt-group { background: #2c2c36; }
+    .cell.bar-sep { margin-right: 4px; }
+    .step-num.bar-sep { margin-right: 4px; }
+    .cell:hover { background: #413c52; }
+    .cell.active { background: #c88cff; box-shadow: 0 0 0 2px #a050ff, 0 0 10px rgba(160,80,255,0.6); }
+    .cell.active::after { content: ""; position: absolute; top: 4px; left: 4px; right: 4px; height: 6px; background: rgba(255,255,255,0.25); border-radius: 4px; }
+    .cell.playhead-col { outline: 1px solid rgba(200,140,255,0.4); }
+    .cell.active.triggered { background: #f5e6ff; box-shadow: 0 0 0 4px rgba(220,160,255,0.7), 0 0 18px #c88cff; }
+
+    /* Footer */
+    .footer { background: #1c1c23; border-top: 1px solid #373744; padding: 8px 24px; display: flex; justify-content: space-between; font-size: 11px; color: #8c8ca0; }
+    .footer .scale { color: #c88cff; font-weight: 600; }
+  </style>
 </head>
 <body>
-  <div class="main-panel">
-    <!-- Header -->
-    <div class="header-panel">
-      <h1 class="title">MUSIC SEQUENCER</h1>
-      <div class="subtitle">16-Step Pattern</div>
-    </div>
-
-    <!-- Center Grid Canvas -->
-    <div class="sequencer-canvas">
-      <!-- Column step numbers -->
-      <div class="columns-header">
-        <div class="label-spacer"></div>
-        <div class="col-num">1</div>
-        <div class="col-num">2</div>
-        <div class="col-num">3</div>
-        <div class="col-num">4</div>
-        <div class="col-num">5</div>
-        <div class="col-num">6</div>
-        <div class="col-num">7</div>
-        <div class="col-num">8</div>
-        <div class="col-num">9</div>
-        <div class="col-num">10</div>
-        <div class="col-num">11</div>
-        <div class="col-num">12</div>
-        <div class="col-num">13</div>
-        <div class="col-num">14</div>
-        <div class="col-num">15</div>
-        <div class="col-num">16</div>
+  <div class="top-container">
+    <div class="banner">
+      <div>
+        <div class="title">VISUAL SYNTH SEQUENCER</div>
+        <div class="subtitle">16-Step Polyphonic DSP Matrix & Real-Time WAV Beat Slicer</div>
       </div>
-
-      <!-- Row C5: {0,0,1,0, 0,0,0,0, 1,0,0,0, 0,0,1,0} -->
-      <div class="grid-row">
-        <div class="row-label">C5</div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row B4: {0,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0} -->
-      <div class="grid-row">
-        <div class="row-label">B4</div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row A4: {1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0} -->
-      <div class="grid-row">
-        <div class="row-label">A4</div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row G4: {0,1,0,1, 0,0,0,0, 0,1,0,1, 0,0,0,0} -->
-      <div class="grid-row">
-        <div class="row-label">G4</div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row F4: {0,0,0,0, 0,1,0,0, 0,0,0,0, 0,1,0,0} -->
-      <div class="grid-row">
-        <div class="row-label">F4</div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row E4: {1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0} -->
-      <div class="grid-row">
-        <div class="row-label">E4</div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-      </div>
-
-      <!-- Row D4: {0,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,1} -->
-      <div class="grid-row">
-        <div class="row-label">D4</div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-      </div>
-
-      <!-- Row C4: {1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0} -->
-      <div class="grid-row">
-        <div class="row-label">C4</div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell active"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
-        <div class="cell"></div>
+      <div class="badges">
+        <div class="badge purple" id="modeBadge">MODE: DSP SYNTHESIZER</div>
+        <div class="badge status playing" id="statusBadge">● PLAYING</div>
       </div>
     </div>
-
-    <!-- Bottom Controls -->
-    <div class="bottom-panel">
-      <div class="button-panel">
-        <button class="styled-button">PLAY</button>
-        <button class="styled-button">STOP</button>
-        <button class="styled-button">CLEAR</button>
+    <div class="deck">
+      <div class="deck-row">
+        <button class="btn primary" onclick="togglePlay()">▶ Play</button>
+        <button class="btn" onclick="stopPlay()">⏹ Stop</button>
+        <span class="bpm-text" id="bpmLbl">BPM: 120</span>
+        <input type="range" min="40" max="240" value="120" oninput="updateBpm(this.value)">
+        <span class="label">Waveform:</span>
+        <select><option>Sine</option><option>Square</option><option>Sawtooth</option><option>Triangle</option></select>
+        <span class="label">Preset:</span>
+        <select onchange="loadPreset(this.selectedIndex)">
+          <option>Presets: Custom</option><option selected>C-Major Arpeggio</option><option>Basic Beat</option><option>C-Major Chord</option>
+        </select>
       </div>
-
-      <div class="bpm-panel">
-        <span class="bpm-label">BPM: 120</span>
-        <input type="range" class="custom-slider" min="60" max="200" value="120">
+      <div class="deck-row">
+        <button class="btn">💾 Save JSON</button>
+        <button class="btn">📂 Load JSON</button>
+        <button class="btn" onclick="clearGrid()">✕ Clear Grid</button>
+        <button class="btn primary">🎵 Import WAV Beat</button>
       </div>
     </div>
   </div>
+
+  <div class="center-stage">
+    <div class="matrix-box">
+      <div class="steps-header" id="stepsHeader"></div>
+      <div id="gridContainer"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>Controls: Click or drag across cells to paint notes  |  Press [SPACE] to Play / Stop  |  44.1 kHz 16-bit Real-Time PCM Mixer</div>
+    <div class="scale">Scale: C-Major (C4 – C5)</div>
+  </div>
+
+  <script>
+    const notes = ["C5","B4","A4","G4","F4","E4","D4","C4"];
+    const freqs = ["523 Hz","494 Hz","440 Hz","392 Hz","349 Hz","330 Hz","294 Hz","262 Hz"];
+    let step = 0, playing = true, bpm = 120, timer = null;
+    const grid = Array.from({length: 8}, () => Array(16).fill(false));
+
+    const headerEl = document.getElementById("stepsHeader");
+    for (let c = 0; c < 16; c++) {
+      const d = document.createElement("div");
+      d.className = "step-num" + (c % 4 === 0 ? " downbeat" : "") + (c % 4 === 3 && c < 15 ? " bar-sep" : "");
+      d.id = "step-num-" + c;
+      d.textContent = c + 1;
+      headerEl.appendChild(d);
+    }
+
+    const gridEl = document.getElementById("gridContainer");
+    for (let r = 0; r < 8; r++) {
+      const row = document.createElement("div");
+      row.className = "grid-row";
+      row.innerHTML = `<div class="row-info"><span class="note-name">${notes[r]}</span><span class="freq-name">${freqs[r]}</span></div>`;
+      for (let c = 0; c < 16; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell" + (Math.floor(c / 4) % 2 === 1 ? " alt-group" : "") + (c % 4 === 3 && c < 15 ? " bar-sep" : "");
+        cell.id = `cell-${r}-${c}`;
+        cell.onmousedown = () => { grid[r][c] = !grid[r][c]; render(); };
+        row.appendChild(cell);
+      }
+      gridEl.appendChild(row);
+    }
+
+    function loadPreset(idx) {
+      for (let r = 0; r < 8; r++) grid[r].fill(false);
+      if (idx === 1) [[0,0],[3,2],[5,4],[7,6],[0,8],[3,10],[5,12],[7,14]].forEach(([r,c]) => grid[r][c] = true);
+      if (idx === 2) { for (let c=0; c<16; c+=4) { grid[0][c]=true; grid[7][c]=true; } [2,6,10,14].forEach(c => grid[4][c]=true); }
+      if (idx === 3) { for (let c=0; c<16; c+=4) [0,3,5,7].forEach(r => grid[r][c]=true); }
+      render();
+    }
+
+    function clearGrid() { for (let r = 0; r < 8; r++) grid[r].fill(false); render(); }
+
+    function render() {
+      for (let c = 0; c < 16; c++) {
+        document.getElementById("step-num-" + c).classList.toggle("active-step", playing && c === step);
+        for (let r = 0; r < 8; r++) {
+          const el = document.getElementById(`cell-${r}-${c}`);
+          el.classList.toggle("active", grid[r][c]);
+          el.classList.toggle("playhead-col", playing && c === step);
+          el.classList.toggle("triggered", playing && c === step && grid[r][c]);
+        }
+      }
+    }
+
+    function tick() { step = (step + 1) % 16; render(); }
+    function resetTimer() { clearInterval(timer); if (playing) timer = setInterval(tick, (60000 / bpm) / 4); }
+    function togglePlay() { playing = true; document.getElementById("statusBadge").textContent = "● PLAYING"; document.getElementById("statusBadge").classList.add("playing"); resetTimer(); render(); }
+    function stopPlay() { playing = false; step = -1; document.getElementById("statusBadge").textContent = "● STOPPED"; document.getElementById("statusBadge").classList.remove("playing"); clearInterval(timer); render(); }
+    function updateBpm(val) { bpm = val; document.getElementById("bpmLbl").textContent = "BPM: " + val; resetTimer(); }
+
+    loadPreset(1);
+    resetTimer();
+  </script>
 </body>
 </html>
