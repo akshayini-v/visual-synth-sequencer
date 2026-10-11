@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
 
 import audio.AudioEngine;
 import audio.BeatDetector;
@@ -161,11 +162,22 @@ public class MainApp extends JFrame {
         gridPanel.setPlayheadStep(currentStep);
         gridPanel.repaint();
 
-        // Query active cells in current column and trigger non-blocking audio synthesis
+        boolean songActive = AudioEngine.isSongLoaded();
+        boolean sampleTriggered = false;
+
+        // Query active cells in current column and trigger audio
         for (int row = 0; row < SequencerModel.ROWS; row++) {
             if (model.isCellActive(row, currentStep)) {
-                double frequency = model.getFrequency(row);
-                AudioEngine.playTone(frequency, 120, isSquareWave ? audio.AudioEngine.Waveform.SQUARE : audio.AudioEngine.Waveform.SINE);
+                if (songActive && !sampleTriggered) {
+                    // Play the audio slice once per step (avoid stacking duplicates)
+                    AudioEngine.playSample(currentStep);
+                    sampleTriggered = true;
+                } else if (!songActive) {
+                    // Fallback: synthesize tone based on row frequency
+                    double frequency = model.getFrequency(row);
+                    AudioEngine.playTone(frequency, 120,
+                        isSquareWave ? AudioEngine.Waveform.SQUARE : AudioEngine.Waveform.SINE);
+                }
             }
         }
     }
@@ -256,7 +268,20 @@ public class MainApp extends JFrame {
                 return;
             }
 
-            // 3. Consume newly extracted 16-step boolean array into sequencer model
+            // 3. Load the song's PCM data into AudioEngine for slice playback
+            try {
+                AudioEngine.loadSongData(selectedFile);
+            } catch (IOException | javax.sound.sampled.UnsupportedAudioFileException ex) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Beat grid loaded but audio playback could not be prepared:\n" + ex.getMessage(),
+                    "Audio Load Warning",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                // Beat grid still works; synth fallback will be used
+            }
+
+            // 4. Consume newly extracted 16-step boolean array into sequencer model
             model.loadBeatPattern(detectedBeats);
             gridPanel.repaint();
         } catch (Exception e) {
