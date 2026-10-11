@@ -82,6 +82,10 @@ public class AudioEngine {
         playTone(frequency, durationMs, waveform, waveform.getDefaultGain());
     }
 
+    public static void playTone(double frequency, double durationMs, boolean isSquareWave) {
+        playTone(frequency, durationMs, isSquareWave ? Waveform.SQUARE : Waveform.SINE);
+    }
+
     public static void shutdown() {
         running = false;
         mixerThread.interrupt();

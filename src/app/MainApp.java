@@ -21,6 +21,7 @@ public class MainApp extends JFrame {
     private int currentStep = -1;
     private int bpm = 120;
     private boolean isSquareWave = false;
+    private JComboBox<String> presetChordDropdown;
 
     public MainApp() {
         setTitle("Visual Synth Sequencer — Executive Control Panel");
@@ -38,7 +39,7 @@ public class MainApp extends JFrame {
 
         pack();
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true);
 
         initTimingEngine();
     }
@@ -78,6 +79,12 @@ public class MainApp extends JFrame {
             waveToggle.setText(isSquareWave ? "Waveform: Square" : "Waveform: Sine");
         });
 
+        // Static Preset Chord / Pattern Dropdown
+        String[] presetNames = {"Presets: None", "C-Major Arpeggio", "Basic Beat", "C-Major Chord"};
+        presetChordDropdown = new JComboBox<>(presetNames);
+        presetChordDropdown.setToolTipText("Select static chord or pattern preset");
+        presetChordDropdown.addActionListener(e -> handlePresetSelection());
+
         // Save & Load File Pattern Controls
         JButton saveBtn = new JButton("Save Pattern");
         JButton loadBtn = new JButton("Load Pattern");
@@ -99,6 +106,11 @@ public class MainApp extends JFrame {
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.add(waveToggle);
+        toolBar.add(Box.createHorizontalStrut(10));
+        toolBar.addSeparator();
+        toolBar.add(Box.createHorizontalStrut(10));
+        toolBar.add(new JLabel("Preset:"));
+        toolBar.add(presetChordDropdown);
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
@@ -176,10 +188,49 @@ public class MainApp extends JFrame {
         });
     }
 
+    private void handlePresetSelection() {
+        if (presetChordDropdown == null) return;
+        int index = presetChordDropdown.getSelectedIndex();
+        if (index <= 0) return;
+
+        model.clear();
+        switch (index) {
+            case 1 -> { // C-Major Arpeggio
+                model.setCell(0, 0, true);
+                model.setCell(3, 2, true);
+                model.setCell(5, 4, true);
+                model.setCell(7, 6, true);
+                model.setCell(0, 8, true);
+                model.setCell(3, 10, true);
+                model.setCell(5, 12, true);
+                model.setCell(7, 14, true);
+            }
+            case 2 -> { // Basic Beat
+                for (int c = 0; c < SequencerModel.COLS; c += 4) {
+                    model.setCell(0, c, true);
+                    model.setCell(7, c, true);
+                }
+                model.setCell(4, 2, true);
+                model.setCell(4, 6, true);
+                model.setCell(4, 10, true);
+                model.setCell(4, 14, true);
+            }
+            case 3 -> { // C-Major Chord
+                for (int c = 0; c < SequencerModel.COLS; c += 4) {
+                    model.setCell(0, c, true);
+                    model.setCell(3, c, true);
+                    model.setCell(5, c, true);
+                    model.setCell(7, c, true);
+                }
+            }
+        }
+        gridPanel.repaint();
+    }
+
     private void handleImportBeat() {
         try {
             JFileChooser chooser = new JFileChooser();
-            chooser.setDialogTitle("Import Beat from WAV");
+            chooser.setDialogTitle("Import Custom WAV Beat");
             FileNameExtensionFilter filter = new FileNameExtensionFilter("WAV Audio (*.wav)", "wav");
             chooser.setFileFilter(filter);
             chooser.setAcceptAllFileFilterUsed(false);
@@ -194,43 +245,19 @@ public class MainApp extends JFrame {
                 return;
             }
 
+            // 1. Bypass & ignore any selected item in the static preset chord dropdown
+            if (presetChordDropdown != null) {
+                presetChordDropdown.setSelectedIndex(0);
+            }
+
+            // 2. Dynamically extract 16-step beat energy from the custom WAV file
             boolean[] detectedBeats = BeatDetector.analyzeAudio(selectedFile);
             if (detectedBeats == null || detectedBeats.length < SequencerModel.COLS) {
                 return;
             }
 
-            String[] rowLabels = {"C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"};
-            JComboBox<String> rowDropdown = new JComboBox<>(rowLabels);
-            rowDropdown.setSelectedItem("G4");
-            if (rowDropdown.getSelectedIndex() == -1) {
-                rowDropdown.setSelectedIndex(SequencerModel.ROWS - 1);
-            }
-
-            Object[] message = {
-                "Select destination row for detected beats:",
-                rowDropdown
-            };
-
-            int confirm = JOptionPane.showConfirmDialog(
-                this,
-                message,
-                "Import beats into which row?",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            );
-
-            if (confirm != JOptionPane.OK_OPTION) {
-                return;
-            }
-
-            int chosenRow = rowDropdown.getSelectedIndex();
-            if (chosenRow < 0 || chosenRow >= SequencerModel.ROWS) {
-                return;
-            }
-
-            for (int col = 0; col < SequencerModel.COLS; col++) {
-                model.setCell(chosenRow, col, detectedBeats[col]);
-            }
+            // 3. Consume newly extracted 16-step boolean array into sequencer model
+            model.loadBeatPattern(detectedBeats);
             gridPanel.repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(
