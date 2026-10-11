@@ -18,11 +18,11 @@ public class MainApp extends JFrame {
     private Timer timer;
     private JLabel bpmLabel;
     private JSlider bpmSlider;
-    
+
     private int currentStep = -1;
     private int bpm = 120;
-    private boolean isSquareWave = false;
-    private JComboBox<String> presetChordDropdown;
+private AudioEngine.Waveform currentWaveform = AudioEngine.Waveform.SINE;
+private JComboBox<String> presetChordDropdown;
 
     public MainApp() {
         setTitle("Visual Synth Sequencer — Executive Control Panel");
@@ -73,28 +73,51 @@ public class MainApp extends JFrame {
             updateTimerSpeed();
         });
 
-        // Waveform Selection Toggle
-        JToggleButton waveToggle = new JToggleButton("Waveform: Sine");
-        waveToggle.addActionListener(e -> {
-            isSquareWave = waveToggle.isSelected();
-            waveToggle.setText(isSquareWave ? "Waveform: Square" : "Waveform: Sine");
+        // Waveform Selection Dropdown
+        JLabel waveLabel = new JLabel("Waveform:");
+        String[] waveformOptions = {"Sine", "Square", "Sawtooth", "Triangle"};
+        JComboBox<String> waveCombo = new JComboBox<>(waveformOptions);
+        waveCombo.setPreferredSize(new Dimension(110, 25));
+        waveCombo.addActionListener(e -> {
+            String selected = (String) waveCombo.getSelectedItem();
+            if (selected != null) {
+                switch (selected) {
+                    case "Square":
+                        currentWaveform = AudioEngine.Waveform.SQUARE;
+                        break;
+                    case "Sawtooth":
+                        currentWaveform = AudioEngine.Waveform.SAWTOOTH;
+                        break;
+                    case "Triangle":
+                        currentWaveform = AudioEngine.Waveform.TRIANGLE;
+                        break;
+                    case "Sine":
+                    default:
+                        currentWaveform = AudioEngine.Waveform.SINE;
+                        break;
+                }
+            }
         });
 
-        // Static Preset Chord / Pattern Dropdown
-        String[] presetNames = {"Presets: None", "C-Major Arpeggio", "Basic Beat", "C-Major Chord"};
-        presetChordDropdown = new JComboBox<>(presetNames);
-        presetChordDropdown.setToolTipText("Select static chord or pattern preset");
-        presetChordDropdown.addActionListener(e -> handlePresetSelection());
+// Static Preset Chord / Pattern Dropdown
+String[] presetNames = {"Presets: None", "C-Major Arpeggio", "Basic Beat", "C-Major Chord"};
+presetChordDropdown = new JComboBox<>(presetNames);
+presetChordDropdown.setToolTipText("Select static chord or pattern preset");
+presetChordDropdown.addActionListener(e -> handlePresetSelection());
 
-        // Save & Load File Pattern Controls
-        JButton saveBtn = new JButton("Save Pattern");
-        JButton loadBtn = new JButton("Load Pattern");
-        JButton importWavBtn = new JButton("Import Beat from WAV");
+// Save, Load, Reset, and Import Controls
+JButton saveBtn = new JButton("Save Pattern");
+JButton loadBtn = new JButton("Load Pattern");
+JButton resetBtn = new JButton("Reset Grid");
+JButton importWavBtn = new JButton("Import Beat from WAV");
 
-        saveBtn.addActionListener(e -> handleSavePattern());
-        loadBtn.addActionListener(e -> handleLoadPattern());
-        importWavBtn.addActionListener(e -> handleImportBeat());
-
+saveBtn.addActionListener(e -> handleSavePattern());
+loadBtn.addActionListener(e -> handleLoadPattern());
+resetBtn.addActionListener(e -> {
+    model.clear();
+    gridPanel.repaint();
+});
+importWavBtn.addActionListener(e -> handleImportBeat());
         // Assemble Controls into Toolbar
         toolBar.add(playBtn);
         toolBar.add(stopBtn);
@@ -106,7 +129,8 @@ public class MainApp extends JFrame {
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
-        toolBar.add(waveToggle);
+        toolBar.add(waveLabel);
+        toolBar.add(waveCombo);
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
@@ -117,10 +141,14 @@ public class MainApp extends JFrame {
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.add(saveBtn);
         toolBar.add(loadBtn);
-        toolBar.add(Box.createHorizontalStrut(10));
-        toolBar.addSeparator();
-        toolBar.add(Box.createHorizontalStrut(10));
-        toolBar.add(importWavBtn);
+toolBar.add(Box.createHorizontalStrut(10));
+toolBar.addSeparator();
+toolBar.add(Box.createHorizontalStrut(10));
+toolBar.add(resetBtn);
+toolBar.add(Box.createHorizontalStrut(10));
+toolBar.addSeparator();
+toolBar.add(Box.createHorizontalStrut(10));
+toolBar.add(importWavBtn);
 
         return toolBar;
     }
@@ -168,16 +196,23 @@ public class MainApp extends JFrame {
         // Query active cells in current column and trigger audio
         for (int row = 0; row < SequencerModel.ROWS; row++) {
             if (model.isCellActive(row, currentStep)) {
-                if (songActive && !sampleTriggered) {
-                    // Play the audio slice once per step (avoid stacking duplicates)
-                    AudioEngine.playSample(currentStep);
-                    sampleTriggered = true;
-                } else if (!songActive) {
-                    // Fallback: synthesize tone based on row frequency
-                    double frequency = model.getFrequency(row);
-                    AudioEngine.playTone(frequency, 120,
-                        isSquareWave ? AudioEngine.Waveform.SQUARE : AudioEngine.Waveform.SINE);
-                }
+// Query active cells in current column and trigger audio
+boolean songActive = AudioEngine.isSongLoaded();
+boolean sampleTriggered = false;
+
+for (int row = 0; row < SequencerModel.ROWS; row++) {
+    if (model.isCellActive(row, currentStep)) {
+        if (songActive && !sampleTriggered) {
+            // Play the audio slice once per step (avoid stacking duplicates)
+            AudioEngine.playSample(currentStep);
+            sampleTriggered = true;
+        } else if (!songActive) {
+            // Fallback: synthesize tone using your multi-waveform dropdown selection
+            double frequency = model.getFrequency(row);
+            AudioEngine.playTone(frequency, 120, currentWaveform);
+        }
+    }
+}
             }
         }
     }
