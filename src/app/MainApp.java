@@ -153,7 +153,7 @@ public class MainApp extends JFrame {
         for (int row = 0; row < SequencerModel.ROWS; row++) {
             if (model.isCellActive(row, currentStep)) {
                 double frequency = model.getFrequency(row);
-                AudioEngine.playTone(frequency, 120, isSquareWave);
+                AudioEngine.playTone(frequency, 120, isSquareWave ? audio.AudioEngine.Waveform.SQUARE : audio.AudioEngine.Waveform.SINE);
             }
         }
     }
