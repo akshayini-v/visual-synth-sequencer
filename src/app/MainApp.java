@@ -14,10 +14,10 @@ public class MainApp extends JFrame {
     private Timer timer;
     private JLabel bpmLabel;
     private JSlider bpmSlider;
-    
+
     private int currentStep = -1;
     private int bpm = 120;
-    private boolean isSquareWave = false;
+    private AudioEngine.Waveform currentWaveform = AudioEngine.Waveform.SINE;
 
     public MainApp() {
         setTitle("Visual Synth Sequencer — Executive Control Panel");
@@ -68,19 +68,43 @@ public class MainApp extends JFrame {
             updateTimerSpeed();
         });
 
-        // Waveform Selection Toggle
-        JToggleButton waveToggle = new JToggleButton("Waveform: Sine");
-        waveToggle.addActionListener(e -> {
-            isSquareWave = waveToggle.isSelected();
-            waveToggle.setText(isSquareWave ? "Waveform: Square" : "Waveform: Sine");
+        // Waveform Selection Dropdown
+        JLabel waveLabel = new JLabel("Waveform:");
+        String[] waveformOptions = {"Sine", "Square", "Sawtooth", "Triangle"};
+        JComboBox<String> waveCombo = new JComboBox<>(waveformOptions);
+        waveCombo.setPreferredSize(new Dimension(110, 25));
+        waveCombo.addActionListener(e -> {
+            String selected = (String) waveCombo.getSelectedItem();
+            if (selected != null) {
+                switch (selected) {
+                    case "Square":
+                        currentWaveform = AudioEngine.Waveform.SQUARE;
+                        break;
+                    case "Sawtooth":
+                        currentWaveform = AudioEngine.Waveform.SAWTOOTH;
+                        break;
+                    case "Triangle":
+                        currentWaveform = AudioEngine.Waveform.TRIANGLE;
+                        break;
+                    case "Sine":
+                    default:
+                        currentWaveform = AudioEngine.Waveform.SINE;
+                        break;
+                }
+            }
         });
 
-        // Save & Load File Pattern Controls
+        // Save, Load, and Reset Controls
         JButton saveBtn = new JButton("Save Pattern");
         JButton loadBtn = new JButton("Load Pattern");
+        JButton resetBtn = new JButton("Reset Grid");
 
         saveBtn.addActionListener(e -> handleSavePattern());
         loadBtn.addActionListener(e -> handleLoadPattern());
+        resetBtn.addActionListener(e -> {
+            model.clear();
+            gridPanel.repaint();
+        });
 
         // Assemble Controls into Toolbar
         toolBar.add(playBtn);
@@ -93,12 +117,15 @@ public class MainApp extends JFrame {
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
-        toolBar.add(waveToggle);
+        toolBar.add(waveLabel);
+        toolBar.add(waveCombo);
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.addSeparator();
         toolBar.add(Box.createHorizontalStrut(10));
         toolBar.add(saveBtn);
         toolBar.add(loadBtn);
+        toolBar.add(Box.createHorizontalStrut(5));
+        toolBar.add(resetBtn);
 
         return toolBar;
     }
@@ -144,7 +171,7 @@ public class MainApp extends JFrame {
         for (int row = 0; row < SequencerModel.ROWS; row++) {
             if (model.isCellActive(row, currentStep)) {
                 double frequency = model.getFrequency(row);
-                AudioEngine.playTone(frequency, 120, isSquareWave ? audio.AudioEngine.Waveform.SQUARE : audio.AudioEngine.Waveform.SINE);
+                AudioEngine.playTone(frequency, 120, currentWaveform);
             }
         }
     }

@@ -20,7 +20,7 @@ import javax.sound.sampled.SourceDataLine;
 public class AudioEngine {
 
     public enum Waveform {
-        SINE(1.0), TRIANGLE(1.0), SAW(0.7), SQUARE(0.6), NOISE(0.5);
+        SINE(1.0), TRIANGLE(1.0), SAWTOOTH(0.7), SQUARE(0.6), NOISE(0.5);
 
         private final double defaultGain;
 
@@ -36,11 +36,11 @@ public class AudioEngine {
     // ---- Audio format & tuning ------------------------------------------
     private static final int SAMPLE_RATE = 44100;
     private static final int BYTES_PER_FRAME = 2;      // 16-bit mono
-    private static final int MAX_VOICES = 8;           // oldest voice is stolen beyond this
-    private static final int BLOCK_FRAMES = 512;       // render block (~11.6 ms)
-    private static final int LINE_BUFFER_MS = 60;      // lower = less latency, higher = safer
+    private static final int MAX_VOICES = 8;            // oldest voice is stolen beyond this
+    private static final int BLOCK_FRAMES = 512;        // render block (~11.6 ms)
+    private static final int LINE_BUFFER_MS = 60;       // lower = less latency, higher = safer
     private static final int FADE_FRAMES = (int) (SAMPLE_RATE * 0.01); // 10 ms anti-click fade
-    private static final double MASTER_GAIN = 0.5;     // headroom when voices stack
+    private static final double MASTER_GAIN = 0.5;      // headroom when voices stack
 
     private static final AudioFormat FORMAT = new AudioFormat(
         AudioFormat.Encoding.PCM_SIGNED,
@@ -182,7 +182,7 @@ public class AudioEngine {
             return switch (waveform) {
                 case SINE -> Math.sin(2.0 * Math.PI * phase);
                 case TRIANGLE -> 2.0 * Math.abs(2.0 * (phase - Math.floor(phase + 0.5))) - 1.0;
-                case SAW -> 2.0 * (phase - Math.floor(phase + 0.5));
+                case SAWTOOTH -> 2.0 * (phase - Math.floor(phase + 0.5));
                 case SQUARE -> phase < 0.5 ? 1.0 : -1.0;
                 case NOISE -> ThreadLocalRandom.current().nextDouble(-1.0, 1.0);
             };
